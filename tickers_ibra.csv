@@ -140,7 +140,6 @@ SLCE3,SLC Agrícola
 SMFT3,Smartfit
 SMTO3,São Martinho
 SRNA3,Serrana
-STBP3,Set Participações
 SUZB3,Suzano
 TAEE11,Taesa
 TASA4,Tam Linhas Aéreas
@@ -167,4 +166,109 @@ WEGE3,WEG
 WIZC3,Wizard
 YDUQ3,Yduqs
 ZAMP3,Zamp
-
+AAPL,Apple Inc.
+MSFT,Microsoft Corporation
+GOOGL,Alphabet Inc. (Google)
+AMZN,Amazon.com Inc.
+META,Meta Platforms Inc.
+NVDA,NVIDIA Corporation
+TSLA,Tesla Inc.
+AMD,Advanced Micro Devices Inc.
+INTC,Intel Corporation
+CRM,Salesforce.com Inc.
+ORCL,Oracle Corporation
+ADBE,Adobe Inc.
+CSCO,Cisco Systems Inc.
+IBM,International Business Machines
+QCOM,Qualcomm Inc.
+AVGO,Broadcom Inc.
+TXN,Texas Instruments Inc.
+JPM,JPMorgan Chase & Co.
+BAC,Bank of America Corp.
+GS,Goldman Sachs Group Inc.
+MS,Morgan Stanley
+C,Citigroup Inc.
+WFC,Wells Fargo & Co.
+BLK,BlackRock Inc.
+AXP,American Express Co.
+V,Visa Inc.
+MA,Mastercard Inc.
+SCHW,Charles Schwab Corp.
+JNJ,Johnson & Johnson
+PFE,Pfizer Inc.
+UNH,UnitedHealth Group Inc.
+MRK,Merck & Co.
+ABT,Abbott Laboratories
+TMO,Thermo Fisher Scientific
+DHR,Danaher Corporation
+BMY,Bristol-Myers Squibb
+ABBV,AbbVie Inc.
+LLY,Eli Lilly and Company
+WMT,Walmart Inc.
+PG,Procter & Gamble Co.
+KO,Coca-Cola Company
+PEP,PepsiCo Inc.
+COST,Costco Wholesale Corp.
+NKE,Nike Inc.
+MCD,McDonald's Corporation
+TGT,Target Corporation
+HD,Home Depot Inc.
+SBUX,Starbucks Corporation
+CAT,Caterpillar Inc.
+BA,Boeing Company
+GE,General Electric Co.
+MMM,3M Company
+HON,Honeywell International Inc.
+UPS,United Parcel Service
+RTX,Raytheon Technologies
+LMT,Lockheed Martin Corp.
+DE,Deere & Company
+EMR,Emerson Electric Co.
+XOM,Exxon Mobil Corporation
+CVX,Chevron Corporation
+COP,ConocoPhillips
+EOG,EOG Resources
+SLB,Schlumberger Limited
+VZ,Verizon Communications Inc.
+T,AT&T Inc.
+CMCSA,Comcast Corporation
+NFLX,Netflix Inc.
+DIS,The Walt Disney Company
+AMT,American Tower Corp.
+PLD,Prologis Inc.
+CCI,Crown Castle Inc.
+LIN,Linde plc
+APD,Air Products & Chemicals
+DOW,Dow Inc.
+F,Ford Motor Company
+GM,General Motors Company
+TM,Toyota Motor Corp.
+EA,Electronic Arts Inc.
+TTWO,Take-Two Interactive
+PYPL,PayPal Holdings Inc.
+SHOP,Shopify Inc.
+BABA,Alibaba Group Holding
+AMAT,Applied Materials Inc.
+KLAC,KLA Corporation
+LRCX,Lam Research Corp.
+NOW,ServiceNow Inc.
+WDAY,Workday Inc.
+SNOW,Snowflake Inc.
+PANW,Palo Alto Networks Inc.
+CRWD,CrowdStrike Holdings Inc.
+FTNT,Fortinet Inc.
+GILD,Gilead Sciences Inc.
+REGN,Regeneron Pharmaceuticals
+BIIB,Biogen Inc.
+NOC,Northrop Grumman Corp.
+GD,General Dynamics Corp.
+KHC,Kraft Heinz Company
+MDLZ,Mondelez International
+UNP,Union Pacific Corporation
+CSX,CSX Corporation
+MET,MetLife Inc.
+ZTS,Zoetis Inc.
+VTRS,Viatris Inc.
+ADM,Archer-Daniels-Midland Co.
+FCX,Freeport-McMoRan Inc.
+NEE,NextEra Energy Inc.

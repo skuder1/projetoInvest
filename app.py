@@ -2,15 +2,30 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import plotly.graph_objs as go
-from datetime import datetime
+from datetime import datetime, timedelta
 from streamlit_extras.metric_cards import style_metric_cards
 from streamlit_extras.grid import grid
+import requests
+from PIL import Image
+from io import BytesIO
+import time
+from prophet import Prophet
+import numpy as np
 
 # Configuração da página
 st.set_page_config(layout="wide")
 
+# Inicializa o estado da moeda se não existir
+if 'currency_is_brl' not in st.session_state:
+    st.session_state.currency_is_brl = True
+
+def toggle_currency():
+    """Alterna entre Real e Dólar"""
+    st.session_state.currency_is_brl = not st.session_state.currency_is_brl
+
 @st.cache_data(ttl=3600)
 def load_ticker_list():
+    """Carrega a lista de tickers do arquivo CSV"""
     try:
         return pd.read_csv("tickers_ibra.csv", usecols=['ticker', 'company'])
     except Exception as e:
@@ -21,11 +36,18 @@ def load_ticker_list():
 def fetch_stock_data(tickers, start_date, end_date):
     """Função para buscar dados de múltiplos tickers de forma otimizada"""
     try:
-        data = yf.download(tickers, start=start_date, end=end_date)['Close']
+        # Adiciona .SA para ações brasileiras que não têm o sufixo
+        formatted_tickers = [
+            f"{ticker}.SA" if ticker[-1].isdigit() and not ticker.endswith('.SA') 
+            else ticker for ticker in tickers
+        ]
+        
+        data = yf.download(formatted_tickers, start=start_date, end=end_date)['Close']
         
         if isinstance(data, pd.Series):
             return pd.DataFrame({tickers[0].replace('.SA', ''): data})
         
+        # Remove o sufixo .SA dos nomes das colunas
         data.columns = [col.replace('.SA', '') for col in data.columns]
         return data
     except Exception as e:
@@ -38,13 +60,42 @@ def get_company_name(ticker, ticker_list):
     try:
         return ticker_list.loc[ticker_list['ticker'] == ticker, 'company'].iloc[0]
     except:
-        return ticker
+        # Se não encontrar no CSV, tenta buscar do Yahoo Finance
+        try:
+            stock = yf.Ticker(ticker)
+            info = stock.info
+            return info.get('longName', ticker)
+        except:
+            return ticker
 
-def calculate_metrics(price_series):
-    """Calcula métricas financeiras"""
+def get_currency_symbol(ticker):
+    """Retorna o símbolo da moeda baseado no ticker e estado atual"""
+    if st.session_state.currency_is_brl:
+        return "R$"
+    else:
+        return "$"
+
+def convert_currency(value, ticker):
+    """Converte o valor para a moeda selecionada"""
+    usd_to_brl = 5.9
+    
+    if st.session_state.currency_is_brl:
+        if ticker[-1].isdigit():  # Ação brasileira
+            return value
+        else:  # Ação internacional
+            return value * usd_to_brl
+    else:
+        if ticker[-1].isdigit():  # Ação brasileira
+            return value / usd_to_brl
+        else:  # Ação internacional
+            return value
+
+def calculate_metrics(price_series, ticker):
+    """Calcula métricas financeiras com conversão de moeda"""
     try:
+        current_price = convert_currency(price_series.iloc[-1], ticker)
         return {
-            'current_price': price_series.iloc[-1],
+            'current_price': current_price,
             'daily_return': (price_series.iloc[-1] / price_series.iloc[-2] - 1) * 100,
             'accumulated_return': ((price_series.iloc[-1] / price_series.iloc[0] - 1) * 100)
         }
@@ -60,17 +111,24 @@ def create_metric_card(ticker, prices, ticker_list, mygrid):
         return
         
     try:
-        metrics = calculate_metrics(prices[ticker])
+        metrics = calculate_metrics(prices[ticker], ticker)
         if not metrics:
             st.error(f"Erro ao calcular métricas para {ticker}")
             return
 
         header_col1, header_col2 = card.columns([1, 3])
+        
         with header_col1:
-            try:
-                st.image(f'https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/{ticker}.png', width=100)
-            except:
-                st.write(ticker)
+            if ticker[-1].isdigit():  # Ação brasileira
+                try:
+                    st.image(f'https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/{ticker}.png', width=100)
+                except:
+                    st.write(ticker)
+            else:  # Ação internacional
+                try:
+                    st.image(f'https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/{ticker}.png', width=100)
+                except:
+                    st.write(ticker)
         
         with header_col2:
             st.markdown(f"### {get_company_name(ticker, ticker_list)}")
@@ -78,9 +136,11 @@ def create_metric_card(ticker, prices, ticker_list, mygrid):
         
         metric_col1, metric_col2, metric_col3 = card.columns(3)
         
+        currency = get_currency_symbol(ticker)
+        
         metric_col1.metric(
             label="Preço Atual",
-            value=f"R$ {metrics['current_price']:.2f}",
+            value=f"{currency} {metrics['current_price']:.2f}",
             help="Último preço disponível"
         )
         
@@ -112,6 +172,10 @@ def create_price_chart(prices, price_type, ticker_list):
         
     data = prices.copy()
     
+    # Converte os preços para a moeda selecionada
+    for column in data.columns:
+        data[column] = data[column].apply(lambda x: convert_currency(x, column))
+    
     if price_type == "Retorno Diário":
         data = data.pct_change()
         title, y_title = 'Retornos Diários', 'Retorno (%)'
@@ -119,7 +183,9 @@ def create_price_chart(prices, price_type, ticker_list):
         data = (1 + data.pct_change()).cumprod() - 1
         title, y_title = 'Retornos Acumulados', 'Retorno Acumulado (%)'
     else:
-        title, y_title = 'Preços Ajustados', 'Preço'
+        title = 'Preços Ajustados'
+        currency = "R$" if st.session_state.currency_is_brl else "$"
+        y_title = f"Preço ({currency})"
 
     fig = go.Figure()
     for column in data.columns:
@@ -140,6 +206,171 @@ def create_price_chart(prices, price_type, ticker_list):
     )
     
     return fig
+
+def train_prophet_model(data, ticker):
+    """Treina um modelo Prophet para previsão de preços"""
+    # Prepara os dados no formato do Prophet
+    df = pd.DataFrame({'ds': data.index, 'y': data[ticker]})
+    
+    # treina o Prophet
+    model = Prophet(daily_seasonality=True,
+                   weekly_seasonality=True,
+                   yearly_seasonality=True,
+                   changepoint_prior_scale=0.05,
+                   seasonality_prior_scale=10)
+    model.fit(df)
+    
+    return model
+
+def make_prediction(model, periods=30):
+    future = model.make_future_dataframe(periods=periods)
+    forecast = model.predict(future)
+    return forecast
+
+def create_prediction_metrics(forecast_data, current_price, ticker):
+    currency = get_currency_symbol(ticker)
+    
+    # Converte o último valor previsto para a moeda correta
+    last_prediction = convert_currency(forecast_data['yhat'].iloc[-1], ticker)
+    current_price = convert_currency(current_price, ticker)
+    predicted_return = ((last_prediction / current_price) - 1) * 100
+    
+    upper_bound = convert_currency(forecast_data['yhat_upper'].iloc[-1], ticker)
+    lower_bound = convert_currency(forecast_data['yhat_lower'].iloc[-1], ticker)
+    uncertainty_range = upper_bound - lower_bound
+    uncertainty_percentage = (uncertainty_range / last_prediction) * 100
+    
+    return {
+        'predicted_price': f"{currency} {last_prediction:.2f}",
+        'predicted_return': f"{predicted_return:.2f}%",
+        'uncertainty': f"±{uncertainty_percentage:.1f}%"
+    }
+
+def create_prediction_chart(historical_data, forecast_data, ticker, ticker_list):
+    fig = go.Figure()
+
+    company_name = get_company_name(ticker, ticker_list)
+    currency = get_currency_symbol(ticker)
+
+    # Plot dados históricos
+    historical_values = historical_data[ticker].apply(lambda x: convert_currency(x, ticker))
+    fig.add_trace(go.Scatter(
+        x=historical_data.index,
+        y=historical_values,
+        mode='lines',
+        name='Dados Históricos',
+        line=dict(color='blue')
+    ))
+
+    # Plot previsão
+    forecast_values = forecast_data['yhat'].apply(lambda x: convert_currency(x, ticker))
+    fig.add_trace(go.Scatter(
+        x=forecast_data['ds'],
+        y=forecast_values,
+        mode='lines',
+        name='Previsão',
+        line=dict(color='red', dash='dash')
+    ))
+
+    # Plot margem de erro
+    upper_values = forecast_data['yhat_upper'].apply(lambda x: convert_currency(x, ticker))
+    lower_values = forecast_data['yhat_lower'].apply(lambda x: convert_currency(x, ticker))
+    
+    fig.add_trace(go.Scatter(
+        x=forecast_data['ds'],
+        y=upper_values,
+        mode='lines',
+        name='Limite Superior',
+        line=dict(width=0),
+        showlegend=False
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=forecast_data['ds'],
+        y=lower_values,
+        mode='lines',
+        name='Margem de Erro',
+        line=dict(width=0),
+        fill='tonexty',
+        fillcolor='rgba(255, 0, 0, 0.1)'
+    ))
+
+    fig.update_layout(
+        title=f'Previsão de Preços - {company_name} ({ticker})',
+        xaxis_title='Data',
+        yaxis_title=f'Preço ({currency})',
+        height=600,
+        hovermode='x unified'
+    )
+
+    return fig
+
+def prediction_tab(prices, ticker_list):
+    """Conteúdo da aba de previsões"""
+    st.title("Previsão de Preços")
+    
+    if prices is None or prices.empty:
+        st.warning("Selecione pelo menos uma empresa para ver as previsões.")
+        return
+        
+    # Seleção do ativo para previsão
+    selected_ticker = st.selectbox(
+        "Selecione o Ativo para Previsão",
+        options=prices.columns,
+        format_func=lambda x: f"{get_company_name(x, ticker_list)} ({x})"
+    )
+    
+    # Período de previsão
+    prediction_days = st.slider(
+        "Período de Previsão (dias)",
+        min_value=7,
+        max_value=90,
+        value=30,
+        step=1
+    )
+    
+    try:
+        with st.spinner("Gerando previsões..."):
+            # Treina o modelo
+            model = train_prophet_model(prices, selected_ticker)
+            
+            # Gera previsões
+            forecast = make_prediction(model, periods=prediction_days)
+            
+            # Cria métricas
+            current_price = prices[selected_ticker].iloc[-1]
+            metrics = create_prediction_metrics(forecast, current_price, selected_ticker)
+            
+            # Exibe métricas
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric(
+                    "Preço Previsto (Final)",
+                    metrics['predicted_price'],
+                    metrics['predicted_return']
+                )
+            with col2:
+                st.metric(
+                    "Margem de Erro",
+                    metrics['uncertainty']
+                )
+            with col3:
+                st.metric(
+                    "Dias Previstos",
+                    f"{prediction_days} dias"
+                )
+            
+            # Gera e exibe o gráfico
+            fig = create_prediction_chart(prices, forecast, selected_ticker, ticker_list)
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Componentes do modelo
+            if st.checkbox("Mostrar Componentes da Previsão"):
+                fig_comp = model.plot_components(forecast)
+                st.pyplot(fig_comp)
+    
+    except Exception as e:
+        st.error(f"Erro ao gerar previsões: {str(e)}")
 
 def build_sidebar():
     """Constrói a barra lateral"""
@@ -169,48 +400,100 @@ def build_sidebar():
     with col2:
         end_date = st.date_input("Até", value="today", format="DD/MM/YYYY")
 
-    tickers = [f"{company.split('(')[-1].strip(')')}.SA" for company in selected_companies]
+    tickers = [company.split('(')[-1].strip(')') for company in selected_companies]
     
     prices = fetch_stock_data(tickers, start_date, end_date)
     
     if prices is None or prices.empty:
         st.error("Não foi possível obter dados para os tickers selecionados")
         return None, None, None
+
+    st.markdown("<div style='min-height: 40vh'></div>", unsafe_allow_html=True)
+    
+    # imagem clicavel
+    currency_image = "currency_usd.png" if st.session_state.currency_is_brl else "currency_brl.png"
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.image(f"images/{currency_image}", width=50)
+        
+        clicked = st.button(
+            " ",
+            key="currency_toggle",
+            help="Clique para alternar entre Real e Dólar",
+        )
+        
+        st.markdown(
+            """
+            <style>
+            div[data-testid="stButton"] {
+                position: relative;
+                top: -70px;
+                background-color: transparent;
+                margin-bottom: -70px;
+            }
+            
+            div[data-testid="stButton"] button {
+                width: 50px;
+                height: 50px;
+                background-color: transparent;
+                border: none;
+                color: transparent;
+                margin: auto;
+                display: block;
+            }
+            
+            div[data-testid="stButton"]:hover button {
+                background-color: rgba(255, 255, 255, 0.1);
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+        if clicked:
+            toggle_currency()
         
     return tickers, prices, ticker_list
 
 def main():
     """Função principal"""
     with st.sidebar:
-            tickers, prices, ticker_list = build_sidebar()
+        tickers, prices, ticker_list = build_sidebar()
 
-    if tickers and prices is not None:
-        st.title("Histórico de Preços")
-        
-        metrics_container = st.container()
-        chart_container = st.container()
-        
-        with metrics_container:
-            st.subheader("Visão Geral dos Ativos")
-            mygrid = grid(2, 2, 2, vertical_align="top")
-            for ticker in prices.columns:
-                create_metric_card(ticker, prices, ticker_list, mygrid)
-        
-        with chart_container:
-            st.markdown("---")
-            price_type = st.selectbox(
-                "Selecione o Tipo de Gráfico",
-                ["Preço Ajustado", "Retorno Diário", "Retorno Acumulado"]
-            )
+    # Criação das abas
+    tab1, tab2 = st.tabs(["Histórico", "Previsão"])
+    
+    with tab1:
+        if tickers and prices is not None:
+            st.title("Histórico de Preços")
             
-            try:
-                fig = create_price_chart(prices, price_type, ticker_list)
-                if fig is not None:
-                    st.plotly_chart(fig, use_container_width=True)
-            except Exception as e:
-                st.error(f"Erro ao gerar gráfico: {str(e)}")
-    else:
-        st.warning("Por favor, selecione pelo menos uma empresa na barra lateral.")
+            metrics_container = st.container()
+            chart_container = st.container()
+            
+            with metrics_container:
+                st.subheader("Visão Geral dos Ativos")
+                mygrid = grid(2, 2, 2, vertical_align="top")
+                for ticker in prices.columns:
+                    create_metric_card(ticker, prices, ticker_list, mygrid)
+            
+            with chart_container:
+                st.markdown("---")
+                price_type = st.selectbox(
+                    "Selecione o Tipo de Gráfico",
+                    ["Preço Ajustado", "Retorno Diário", "Retorno Acumulado"]
+                )
+                
+                try:
+                    fig = create_price_chart(prices, price_type, ticker_list)
+                    if fig is not None:
+                        st.plotly_chart(fig, use_container_width=True)
+                except Exception as e:
+                    st.error(f"Erro ao gerar gráfico: {str(e)}")
+        else:
+            st.warning("Por favor, selecione pelo menos uma empresa na barra lateral.")
+    
+    with tab2:
+        prediction_tab(prices, ticker_list)
 
 if __name__ == "__main__":
     main()
