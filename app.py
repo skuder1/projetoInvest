@@ -16,12 +16,8 @@ import numpy as np
 st.set_page_config(layout="wide")
 
 # Inicializa o estado da moeda se não existir
-if 'currency_is_brl' not in st.session_state:
-    st.session_state.currency_is_brl = True
-
-def toggle_currency():
-    """Alterna entre Real e Dólar"""
-    st.session_state.currency_is_brl = not st.session_state.currency_is_brl
+if 'selected_currency' not in st.session_state:
+    st.session_state.selected_currency = "BRL"  # Começa com Real (BRL)
 
 @st.cache_data(ttl=3600)
 def load_ticker_list():
@@ -68,27 +64,36 @@ def get_company_name(ticker, ticker_list):
         except:
             return ticker
 
-def get_currency_symbol(ticker):
-    """Retorna o símbolo da moeda baseado no ticker e estado atual"""
-    if st.session_state.currency_is_brl:
+def get_currency_symbol():
+    """Retorna o símbolo da moeda baseado na seleção atual"""
+    if st.session_state.selected_currency == "BRL":
         return "R$"
-    else:
+    elif st.session_state.selected_currency == "USD":
         return "$"
+    elif st.session_state.selected_currency == "EUR":
+        return "€"
 
 def convert_currency(value, ticker):
     """Converte o valor para a moeda selecionada"""
-    usd_to_brl = 5.9
-    
-    if st.session_state.currency_is_brl:
+    # Taxas de conversão (exemplo, você pode buscar essas taxas em tempo real)
+    usd_to_brl = 5.9  # 1 USD = 5.9 BRL
+    eur_to_brl = 6.5  # 1 EUR = 6.5 BRL
+
+    if st.session_state.selected_currency == "BRL":
         if ticker[-1].isdigit():  # Ação brasileira
             return value
         else:  # Ação internacional
             return value * usd_to_brl
-    else:
+    elif st.session_state.selected_currency == "USD":
         if ticker[-1].isdigit():  # Ação brasileira
             return value / usd_to_brl
         else:  # Ação internacional
             return value
+    elif st.session_state.selected_currency == "EUR":
+        if ticker[-1].isdigit():  # Ação brasileira
+            return value / eur_to_brl
+        else:  # Ação internacional
+            return value / (eur_to_brl / usd_to_brl)  # Converte USD para EUR
 
 def calculate_metrics(price_series, ticker):
     """Calcula métricas financeiras com conversão de moeda"""
@@ -136,7 +141,7 @@ def create_metric_card(ticker, prices, ticker_list, mygrid):
         
         metric_col1, metric_col2, metric_col3 = card.columns(3)
         
-        currency = get_currency_symbol(ticker)
+        currency = get_currency_symbol()
         
         metric_col1.metric(
             label="Preço Atual",
@@ -184,7 +189,7 @@ def create_price_chart(prices, price_type, ticker_list):
         title, y_title = 'Retornos Acumulados', 'Retorno Acumulado (%)'
     else:
         title = 'Preços Ajustados'
-        currency = "R$" if st.session_state.currency_is_brl else "$"
+        currency = get_currency_symbol()
         y_title = f"Preço ({currency})"
 
     fig = go.Figure()
@@ -228,7 +233,7 @@ def make_prediction(model, periods=30):
     return forecast
 
 def create_prediction_metrics(forecast_data, current_price, ticker):
-    currency = get_currency_symbol(ticker)
+    currency = get_currency_symbol()
     
     # Converte o último valor previsto para a moeda correta
     last_prediction = convert_currency(forecast_data['yhat'].iloc[-1], ticker)
@@ -250,7 +255,7 @@ def create_prediction_chart(historical_data, forecast_data, ticker, ticker_list)
     fig = go.Figure()
 
     company_name = get_company_name(ticker, ticker_list)
-    currency = get_currency_symbol(ticker)
+    currency = get_currency_symbol()
 
     # Plot dados históricos
     historical_values = historical_data[ticker].apply(lambda x: convert_currency(x, ticker))
@@ -408,51 +413,31 @@ def build_sidebar():
         st.error("Não foi possível obter dados para os tickers selecionados")
         return None, None, None
 
+    # Espaço para empurrar o seletor de moeda para o final
     st.markdown("<div style='min-height: 40vh'></div>", unsafe_allow_html=True)
     
-    # imagem clicavel
-    currency_image = "currency_usd.png" if st.session_state.currency_is_brl else "currency_brl.png"
+    # Seletor de moeda (sem legenda, menor e centralizado)
+    st.markdown(
+        """
+        <style>
+        .centered-selectbox > div {
+            width: 100px;
+            margin: auto;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
     
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.image(f"images/{currency_image}", width=50)
-        
-        clicked = st.button(
-            " ",
-            key="currency_toggle",
-            help="Clique para alternar entre Real e Dólar",
-        )
-        
-        st.markdown(
-            """
-            <style>
-            div[data-testid="stButton"] {
-                position: relative;
-                top: -70px;
-                background-color: transparent;
-                margin-bottom: -70px;
-            }
-            
-            div[data-testid="stButton"] button {
-                width: 50px;
-                height: 50px;
-                background-color: transparent;
-                border: none;
-                color: transparent;
-                margin: auto;
-                display: block;
-            }
-            
-            div[data-testid="stButton"]:hover button {
-                background-color: rgba(255, 255, 255, 0.1);
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-        if clicked:
-            toggle_currency()
-        
+    st.markdown("<div class='centered-selectbox'>", unsafe_allow_html=True)
+    st.session_state.selected_currency = st.selectbox(
+        "",  # Sem legenda
+        options=["BRL", "USD", "EUR"],
+        index=0,  # Começa com BRL
+        key="currency_selector"
+    )
+    st.markdown("</div>", unsafe_allow_html=True)
+    
     return tickers, prices, ticker_list
 
 def main():
