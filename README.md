@@ -1,3 +1,3 @@
-Aplicação feita em python para acompanhamento e análise de ativos de empresas.
+Aplicação feita em Python utlizando a biblioteca Streamlit para acompanhamento e análise de ativos de empresas.
 
-![image](https://github.com/user-attachments/assets/838bbd1a-c281-4ec4-8390-42bf4248bcdc)
+<img width="1914" height="866" alt="image" src="https://github.com/user-attachments/assets/e3cd4f80-c416-4751-9931-844ee4ef7fb1" />
