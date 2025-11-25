@@ -1,35 +1,43 @@
 import requests
-import json
 import streamlit as st
 
-# Função principal para enviar perguntas ao modelo no Groq
-def ask_ai(prompt, contexto=None):
+def ask_ai(prompt):
+
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
     # treinamento
-    system = "Você é um analista financeiro e assistente do app. Responda de forma clara e objetiva."
+    system = (
+        "Você é um analista financeiro do aplicativo do usuário. "
+        "Explique preços, movimentos de mercado e responda de forma clara. "
+        'Responda sempre na linguagem da pergunta do usuário'
+    )
 
-    # Anexa contexto 
-    if contexto:
-        system += "\nContexto: " + str(contexto)
+    messages = [{"role": "system", "content": system}]
 
+    for item in st.session_state.chat_history:
+        messages.append(item)
+
+    messages.append({"role": "user", "content": prompt})
+
+    # Chamada à API
     url = "https://api.groq.com/openai/v1/chat/completions"
-
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {st.secrets['groq_api_key']}"
     }
-
     payload = {
-        "model": "qwen/qwen3-32b",  
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.2  
+        "model": "qwen/qwen3-32b",
+        "messages": messages,
+        "temperature": 0.2
     }
 
-    # Chamada à API
     resp = requests.post(url, headers=headers, json=payload)
     data = resp.json()
+    resposta = data["choices"][0]["message"]["content"]
 
-    # Retorna a resposta textual
-    return data["choices"][0]["message"]["content"]
+    # salva no histórico
+    st.session_state.chat_history.append({"role": "user", "content": prompt})
+    st.session_state.chat_history.append({"role": "assistant", "content": resposta})
+
+    return resposta

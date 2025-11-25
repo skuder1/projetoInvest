@@ -488,21 +488,25 @@ def main():
     with tab3:
         st.title("Assistente IA (Qwen 32B)")
 
-        # Proteção: só funciona se o usuário tiver selecionado ativos
         if not tickers or prices is None:
-            st.info("Selecione ao menos um ativo na barra lateral para ativar o assistente.")
+            st.info("Selecione ao menos um ativo na barra lateral.")
         else:
-            user_input = st.text_area("Digite sua pergunta:", height=120)
+
+            # Mostra histórico
+            if "chat_history" in st.session_state:
+                for msg in st.session_state.chat_history:
+                    if msg["role"] == "assistant":
+                        st.markdown(f"**IA:** {msg['content']}")
+                    else:
+                        st.markdown(f"**Você:** {msg['content']}")
+
+            # Entrada nova
+            user_input = st.text_input("Pergunte algo:")
 
             if st.button("Enviar"):
-                contexto = {
-                    "tickers": tickers,
-                    "periodo": f"{start_date} → {end_date}",
-                    "ultimos_precos": prices.tail(3).to_dict()
-                }
+                resposta = ask_ai(user_input)
+                st.markdown(f"**IA:** {resposta}")
 
-                resposta = ask_ai(user_input, contexto)
-                st.write(resposta)
 
 if __name__ == "__main__":
     main()
