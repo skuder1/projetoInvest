@@ -9,7 +9,7 @@ def ask_ai(prompt, contexto=None):
 
     # Anexa contexto 
     if contexto:
-        system += "\nContexto: " + json.dumps(contexto, ensure_ascii=False)
+        system += "\nContexto: " + str(contexto)
 
     url = "https://api.groq.com/openai/v1/chat/completions"
 
