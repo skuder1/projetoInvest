@@ -403,7 +403,7 @@ def build_sidebar():
 
     ticker_list = load_ticker_list()
     if ticker_list is None:
-        return None, None, None
+        return None, None, None, None, None
 
     formatted_options = [
         f"{row['company']} ({row['ticker']})"
@@ -417,7 +417,7 @@ def build_sidebar():
     )
 
     if not selected_companies:
-        return None, None, None
+        return None, None, None, None, None
 
     col1, col2 = st.sidebar.columns(2)
     with col1:
@@ -431,7 +431,7 @@ def build_sidebar():
 
     if prices is None or prices.empty:
         st.error("Não foi possível obter dados para os tickers selecionados")
-        return None, None, None
+        return None, None, None, None, None
 
     st.sidebar.markdown("<div style='min-height: 20vh'></div>", unsafe_allow_html=True)
 
