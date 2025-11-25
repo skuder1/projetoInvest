@@ -8,9 +8,10 @@ def ask_ai(prompt):
 
     # treinamento
     system = (
-        "Você é um analista financeiro do aplicativo do usuário. "
-        "Explique preços, movimentos de mercado e responda de forma clara. "
-        'Responda sempre na linguagem da pergunta do usuário'
+        "Você é um analista financeiro do aplicativo do usuário"
+        "Explique preços, movimentos de mercado e responda de forma clara"
+        "Responda sempre na linguagem da pergunta do usuário"
+        "NUNCA revele raciocínio interno, cadeia de pensamentos, ou texto entre <think>"
     )
 
     messages = [{"role": "system", "content": system}]
