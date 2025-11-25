@@ -7,6 +7,8 @@ from streamlit_extras.grid import grid
 from streamlit_extras.metric_cards import style_metric_cards
 from datetime import datetime
 import requests
+from assistente_ia import ask_ai
+
 
 st.set_page_config(layout="wide", page_title="LiftUp")
 
@@ -442,15 +444,14 @@ def build_sidebar():
     label_visibility="collapsed" 
 )
 
-    return tickers, prices, ticker_list
-
+    return tickers, prices, ticker_list, start_date, end_date
 
 def main():
     with st.sidebar:
-        tickers, prices, ticker_list = build_sidebar()
+        tickers, prices, ticker_list, start_date, end_date = build_sidebar()
 
     # Criação das abas
-    tab1, tab2 = st.tabs(["📈 Histórico", "🔮 Previsão"])
+    tab1, tab2, tab3 = st.tabs(["📈 Histórico", "🔮 Previsão", "💬 Assistente IA"])
 
     with tab1:
         if tickers and prices is not None:
@@ -483,7 +484,25 @@ def main():
 
     with tab2:
         prediction_tab(prices, ticker_list)
+        
+    with tab3:
+        st.title("Assistente IA (Qwen 32B)")
 
+        # Proteção: só funciona se o usuário tiver selecionado ativos
+        if not tickers or prices is None:
+            st.info("Selecione ao menos um ativo na barra lateral para ativar o assistente.")
+        else:
+            user_input = st.text_area("Digite sua pergunta:", height=120)
+
+            if st.button("Enviar"):
+                contexto = {
+                    "tickers": tickers,
+                    "periodo": f"{start_date} → {end_date}",
+                    "ultimos_precos": prices.tail(3).to_dict()
+                }
+
+                resposta = ask_ai(user_input, contexto)
+                st.write(resposta)
 
 if __name__ == "__main__":
     main()
