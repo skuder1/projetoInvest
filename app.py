@@ -7,7 +7,7 @@ from streamlit_extras.grid import grid
 from streamlit_extras.metric_cards import style_metric_cards
 from datetime import datetime
 import requests
-from assistente_ia import ask_ai
+from assistente_ia import ask_ai, clear_history
 
 
 st.set_page_config(layout="wide", page_title="LiftUp")
@@ -486,27 +486,28 @@ def main():
         prediction_tab(prices, ticker_list)
         
     with tab3:
-        st.title("Assistente IA (Qwen 32B)")
+        st.title("💬 Assistente IA")
 
         if not tickers or prices is None:
             st.info("Selecione ao menos um ativo na barra lateral.")
         else:
 
-            # Mostra histórico
+            if st.button("Limpar histórico"):
+                clear_history()
+                st.success("Histórico limpo.")
+
             if "chat_history" in st.session_state:
                 for msg in st.session_state.chat_history:
                     if msg["role"] == "assistant":
-                        st.markdown(f"**IA:** {msg['content']}")
+                        st.markdown(f"<div style='background:#1e1e1e;padding:10px;border-radius:8px;margin:5px 0'><b>IA:</b> {msg['content']}</div>", unsafe_allow_html=True)
                     else:
-                        st.markdown(f"**Você:** {msg['content']}")
+                        st.markdown(f"<div style='background:#333;padding:10px;border-radius:8px;margin:5px 0'><b>Você:</b> {msg['content']}</div>", unsafe_allow_html=True)
 
-            # Entrada nova
-            user_input = st.text_input("Pergunte algo:")
+            pergunta = st.text_input("Digite sua pergunta:")
 
-            if st.button("Enviar"):
-                resposta = ask_ai(user_input)
-                st.markdown(f"**IA:** {resposta}")
-
+            if st.button("Enviar Pergunta"):
+                resposta = ask_ai(pergunta)
+                st.markdown(f"<div style='background:#1e1e1e;padding:10px;border-radius:8px;margin:5px 0'><b>IA:</b> {resposta}</div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()

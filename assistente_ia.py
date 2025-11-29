@@ -1,44 +1,54 @@
 import requests
 import streamlit as st
 
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
 def ask_ai(prompt):
 
+    # cria histórico se não existir
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    # treinamento
-    system = (
-        "Você é um analista financeiro do aplicativo do usuário"
-        "Explique preços, movimentos de mercado e responda de forma clara"
-        "Responda sempre na linguagem da pergunta do usuário"
-        "NUNCA revele raciocínio interno, cadeia de pensamentos, ou texto entre <think>"
+    # Prompt anti-chain-of-thought
+    system_msg = (
+        "Você é um analista financeiro com acesso à internet em tempo real."
+        "Use navegação web quando necessário para buscar informações atuais, traga movimentações de mercado, contexto, etc."
+        "Responda sempre na linguagem do usuário."
+        "Forneça apenas conclusões claras e úteis."
     )
 
-    messages = [{"role": "system", "content": system}]
-
-    for item in st.session_state.chat_history:
-        messages.append(item)
-
+    # histórico
+    messages = [{"role": "system", "content": system_msg}]
+    messages.extend(st.session_state.chat_history)
     messages.append({"role": "user", "content": prompt})
 
-    # Chamada à API
-    url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {st.secrets['groq_api_key']}"
+        "Authorization": f"Bearer {st.secrets['openrouter_api_key']}",
+        "HTTP-Referer": "https://projetoliftup-wshhm7rv3yb26cyrf9wn7e.streamlit.app/", 
+        "X-Title": "LiftUp Finance AI",
+        "Content-Type": "application/json"
     }
+
     payload = {
-        "model": "qwen/qwen3-32b",
+        "model": "x-ai/grok-4.1-fast:free",
         "messages": messages,
         "temperature": 0.2
     }
 
-    resp = requests.post(url, headers=headers, json=payload)
-    data = resp.json()
-    resposta = data["choices"][0]["message"]["content"]
+    try:
+        resp = requests.post(OPENROUTER_URL, headers=headers, json=payload, timeout=40)
+        resp.raise_for_status()
+        data = resp.json()
+        resposta = data["choices"][0]["message"]["content"]
+    except Exception as e:
+        resposta = f"Erro ao consultar IA: {e}"
 
-    # salva no histórico
+    # salva histórico
     st.session_state.chat_history.append({"role": "user", "content": prompt})
     st.session_state.chat_history.append({"role": "assistant", "content": resposta})
 
     return resposta
+
+
+def clear_history():
+    st.session_state.chat_history = []
