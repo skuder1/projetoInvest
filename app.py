@@ -486,28 +486,51 @@ def main():
         prediction_tab(prices, ticker_list)
         
     with tab3:
-        st.title("💬 Assistente IA")
+        st.title("Assistente IA")
 
         if not tickers or prices is None:
             st.info("Selecione ao menos um ativo na barra lateral.")
         else:
 
+            # botão para limpar histórico
             if st.button("Limpar histórico"):
                 clear_history()
                 st.success("Histórico limpo.")
 
-            if "chat_history" in st.session_state:
-                for msg in st.session_state.chat_history:
-                    if msg["role"] == "assistant":
-                        st.markdown(f"<div style='background:#1e1e1e;padding:10px;border-radius:8px;margin:5px 0'><b>IA:</b> {msg['content']}</div>", unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"<div style='background:#333;padding:10px;border-radius:8px;margin:5px 0'><b>Você:</b> {msg['content']}</div>", unsafe_allow_html=True)
+            st.markdown("---")
 
-            pergunta = st.text_input("Digite sua pergunta:")
+            chat_container = st.container()
+
+            with chat_container:
+                if "chat_history" in st.session_state:
+                    for msg in st.session_state.chat_history:
+                        if msg["role"] == "assistant":
+                            st.markdown(
+                                f"<div style='background:#1e1e1e; padding:10px; border-radius:8px; margin:5px 0;'>"
+                                f"<b>IA:</b> {msg['content']}</div>",
+                                unsafe_allow_html=True
+                            )
+                        else:
+                            st.markdown(
+                                f"<div style='background:#333; padding:10px; border-radius:8px; margin:5px 0;'>"
+                                f"<b>Você:</b> {msg['content']}</div>",
+                                unsafe_allow_html=True
+                            )
+
+            st.markdown("---")
+
+            pergunta = st.text_input("Digite sua pergunta:", key="pergunta_input")
 
             if st.button("Enviar Pergunta"):
                 resposta = ask_ai(pergunta)
-                st.markdown(f"<div style='background:#1e1e1e;padding:10px;border-radius:8px;margin:5px 0'><b>IA:</b> {resposta}</div>", unsafe_allow_html=True)
+                
+                # scroll automático
+                with chat_container:
+                    st.markdown(
+                        f"<div style='background:#1e1e1e; padding:10px; border-radius:8px; margin:5px 0;'>"
+                        f"<b>IA:</b> {resposta}</div>",
+                        unsafe_allow_html=True
+                    )
 
 if __name__ == "__main__":
     main()

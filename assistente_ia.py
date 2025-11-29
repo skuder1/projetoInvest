@@ -12,9 +12,9 @@ def ask_ai(prompt):
     # Prompt anti-chain-of-thought
     system_msg = (
         "Você é um analista financeiro com acesso à internet em tempo real."
-        "Use navegação web quando necessário para buscar informações atuais, traga movimentações de mercado, contexto, etc."
+        "Use navegação web para sempre trazer informações recentes."
         "Responda sempre na linguagem do usuário."
-        "Forneça apenas conclusões claras e úteis."
+        "Forneça conclusões claras e úteis. Além disso traga insights."
     )
 
     # histórico
